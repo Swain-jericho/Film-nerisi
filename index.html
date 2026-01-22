@@ -513,7 +513,7 @@
                 <span class="tab-count" id="watchlist-count">16</span>
             </button>
             <button class="main-tab" onclick="switchTab('favorites')">
-                <span class="tab-icon">❤️</span>
+                <img src="images/heart_icon.png" style="width:22px;height:22px;">
                 Favoriler
                 <span class="tab-count" id="favorites-count">0</span>
             </button>
@@ -992,7 +992,59 @@
     </div>
 
     <script>
-        // Tab switching function
+        // LocalStorage keys
+        const FAVORITES_KEY = 'edanur_arda_favorites';
+        const WATCHED_KEY = 'edanur_arda_watched';
+
+        // Get movie ID from card
+        function getMovieId(card) {
+            return card.querySelector('.movie-title').textContent.trim();
+        }
+
+        // Load saved data from localStorage
+        function loadSavedData() {
+            const favorites = JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]');
+            const watched = JSON.parse(localStorage.getItem(WATCHED_KEY) || '[]');
+            
+            document.querySelectorAll('#moviesGrid .movie-card').forEach(card => {
+                const movieId = getMovieId(card);
+                const favBtn = card.querySelector('.fav-btn');
+                const watchedBtn = card.querySelector('.watched-btn');
+                
+                if (favorites.includes(movieId)) {
+                    favBtn.classList.add('active');
+                    favBtn.innerHTML = '<img src="images/heart_icon.png" style="width:20px;height:20px;">';
+                }
+                
+                if (watched.includes(movieId)) {
+                    watchedBtn.classList.add('active');
+                    watchedBtn.innerHTML = '✅';
+                }
+            });
+            
+            updateCounts();
+        }
+
+        // Save to localStorage
+        function saveFavorites() {
+            const favorites = [];
+            document.querySelectorAll('#moviesGrid .fav-btn.active').forEach(btn => {
+                const card = btn.closest('.movie-card');
+                favorites.push(getMovieId(card));
+            });
+            localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
+        }
+
+        function saveWatched() {
+            const watched = [];
+            document.querySelectorAll('#moviesGrid .watched-btn.active').forEach(btn => {
+                const card = btn.closest('.movie-card');
+                watched.push(getMovieId(card));
+            });
+            localStorage.setItem(WATCHED_KEY, JSON.stringify(watched));
+        }
+
+        // Tab switching function with filtering
         function switchTab(tabName) {
             // Hide all tab contents
             document.querySelectorAll('.tab-content').forEach(tab => {
@@ -1009,6 +1061,67 @@
             
             // Add active to clicked button
             event.target.closest('.main-tab').classList.add('active');
+            
+            // Populate favorites and watched grids
+            if (tabName === 'favorites') {
+                populateFavoritesGrid();
+            } else if (tabName === 'watched') {
+                populateWatchedGrid();
+            }
+        }
+
+        // Populate favorites grid with cloned cards
+        function populateFavoritesGrid() {
+            const grid = document.getElementById('favoritesGrid');
+            grid.innerHTML = '';
+            
+            const favorites = JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]');
+            
+            if (favorites.length === 0) {
+                grid.innerHTML = `
+                    <div class="empty-state" style="grid-column: 1/-1;">
+                        <div class="icon">💔</div>
+                        <h3>Henüz favori film eklenmedi</h3>
+                        <p>Film kartlarındaki kalp butonuna tıklayarak favorilere ekleyebilirsiniz</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            document.querySelectorAll('#moviesGrid .movie-card').forEach(card => {
+                const movieId = getMovieId(card);
+                if (favorites.includes(movieId)) {
+                    const clone = card.cloneNode(true);
+                    grid.appendChild(clone);
+                }
+            });
+        }
+
+        // Populate watched grid with cloned cards
+        function populateWatchedGrid() {
+            const grid = document.getElementById('watchedGrid');
+            grid.innerHTML = '';
+            
+            const watched = JSON.parse(localStorage.getItem(WATCHED_KEY) || '[]');
+            
+            if (watched.length === 0) {
+                grid.innerHTML = `
+                    <div class="empty-state" style="grid-column: 1/-1;">
+                        <div class="icon">🎬</div>
+                        <h3>Henüz izlenen film yok</h3>
+                        <p>Film kartlarındaki ✓ butonuna tıklayarak izlediğinizi işaretleyebilirsiniz</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            document.querySelectorAll('#moviesGrid .movie-card').forEach(card => {
+                const movieId = getMovieId(card);
+                if (watched.includes(movieId)) {
+                    const clone = card.cloneNode(true);
+                    grid.appendChild(clone);
+                }
+            });
         }
 
         // Filter movies function
@@ -1032,31 +1145,33 @@
         }
 
         // Toggle favorite
-        function toggleFavorite(btn, movieTitle) {
+        function toggleFavorite(btn) {
             btn.classList.toggle('active');
             if (btn.classList.contains('active')) {
-                btn.innerHTML = '❤️';
+                btn.innerHTML = '<img src="images/heart_icon.png" style="width:20px;height:20px;">';
             } else {
                 btn.innerHTML = '🤍';
             }
+            saveFavorites();
             updateCounts();
         }
 
         // Toggle watched
-        function toggleWatched(btn, movieTitle) {
+        function toggleWatched(btn) {
             btn.classList.toggle('active');
             if (btn.classList.contains('active')) {
                 btn.innerHTML = '✅';
             } else {
                 btn.innerHTML = '⬜';
             }
+            saveWatched();
             updateCounts();
         }
 
         // Update tab counts
         function updateCounts() {
-            const favCount = document.querySelectorAll('.fav-btn.active').length;
-            const watchedCount = document.querySelectorAll('.watched-btn.active').length;
+            const favCount = document.querySelectorAll('#moviesGrid .fav-btn.active').length;
+            const watchedCount = document.querySelectorAll('#moviesGrid .watched-btn.active').length;
             const totalCount = document.querySelectorAll('#moviesGrid .movie-card').length;
             
             document.getElementById('favorites-count').textContent = favCount;
@@ -1085,8 +1200,8 @@
             card.style.animation = `fadeIn 0.5s ease ${index * 0.08}s both`;
         });
 
-        // Initialize counts
-        updateCounts();
+        // Load saved data on page load
+        loadSavedData();
     </script>
 </body>
 </html>
